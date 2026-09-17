@@ -1,0 +1,374 @@
+const path = require('path');
+const fs = require('fs');
+const Application = require('../models/Application');
+const { generateApplicationId } = require('../services/idGenerator');
+const { sendApplicationSubmittedEmail } = require('../services/emailService');
+
+/**
+ * @desc    Submit a new job/manpower application
+ * @route   POST /api/applications
+ * @access  Public
+ */
+const submitApplication = async (req, res, next) => {
+  try {
+    // 1. Check if file was uploaded
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'Resume upload is required. Please upload your resume in PDF or DOC format.',
+      });
+    }
+
+    // 2. Parse body fields (supporting both nested JSON strings and objects)
+    let personalDetails = req.body.personalDetails;
+    let workExperience = req.body.workExperience;
+    let education = req.body.education;
+    const applicantType = req.body.applicantType;
+
+    if (typeof personalDetails === 'string') {
+      try {
+        personalDetails = JSON.parse(personalDetails);
+      } catch (e) {
+        personalDetails = {};
+      }
+    }
+
+    if (typeof workExperience === 'string') {
+      try {
+        workExperience = JSON.parse(workExperience);
+      } catch (e) {
+        workExperience = {};
+      }
+    }
+
+    if (typeof education === 'string') {
+      try {
+        education = JSON.parse(education);
+      } catch (e) {
+        education = {};
+      }
+    }
+
+    // Fallback if top-level flat fields were submitted
+    if (!personalDetails || !personalDetails.fullName) {
+      personalDetails = {
+        fullName: req.body.fullName || req.body.name,
+        email: req.body.email,
+        phone: req.body.phone,
+        altPhone: req.body.altPhone || '',
+        address: req.body.address,
+        city: req.body.city,
+        state: req.body.state,
+        pincode: req.body.pincode,
+      };
+    }
+
+    // Basic Validations
+    if (!personalDetails.fullName || !personalDetails.email || !personalDetails.phone) {
+      // Remove uploaded file if validation fails
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide all required personal details (Full Name, Email, Phone, Address).',
+      });
+    }
+
+    if (!applicantType) {
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(400).json({
+        success: false,
+        message: 'Applicant type (Fresher or Experienced) is required.',
+      });
+    }
+
+    // Check for duplicate recent active application with same email
+    const existingApp = await Application.findOne({
+      'personalDetails.email': personalDetails.email.toLowerCase().trim(),
+      status: { $in: ['PAYMENT_PENDING', 'PAYMENT_RECEIVED', 'APPLICATION_PENDING', 'CONFIRMED'] },
+    });
+
+    if (existingApp) {
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(400).json({
+        success: false,
+        applicationId: existingApp.applicationId,
+        message: `An active application with email ${personalDetails.email} already exists (ID: ${existingApp.applicationId}).`,
+      });
+    }
+
+    // 3. Generate unique human-readable Application ID
+    const applicationId = await generateApplicationId();
+
+    // 4. Build Resume Object
+    const resumeData = {
+      fileName: req.file.filename,
+      originalName: req.file.originalname,
+      filePath: req.file.path,
+      mimeType: req.file.mimetype,
+      size: req.file.size,
+      uploadedAt: new Date(),
+    };
+
+    // 5. Create new Application document
+    const application = new Application({
+      applicationId,
+      personalDetails: {
+        fullName: personalDetails.fullName.trim(),
+        email: personalDetails.email.toLowerCase().trim(),
+        phone: personalDetails.phone.trim(),
+        altPhone: personalDetails.altPhone ? personalDetails.altPhone.trim() : '',
+        address: personalDetails.address ? personalDetails.address.trim() : '',
+        city: personalDetails.city ? personalDetails.city.trim() : '',
+        state: personalDetails.state ? personalDetails.state.trim() : '',
+        pincode: personalDetails.pincode ? personalDetails.pincode.trim() : '',
+      },
+      applicantType,
+      workExperience: applicantType === 'experienced' ? {
+        totalExperience: workExperience?.totalExperience || '',
+        currentCompany: workExperience?.currentCompany || '',
+        designation: workExperience?.designation || '',
+        relevantExperience: workExperience?.relevantExperience || '',
+        skills: Array.isArray(workExperience?.skills) ? workExperience.skills : (workExperience?.skills ? [workExperience.skills] : []),
+        currentSalary: workExperience?.currentSalary || '',
+        expectedSalary: workExperience?.expectedSalary || '',
+        noticePeriod: workExperience?.noticePeriod || '',
+      } : {
+        totalExperience: '0 years (Fresher)',
+        currentCompany: 'N/A',
+        designation: 'Fresher',
+        relevantExperience: 'N/A',
+        skills: Array.isArray(workExperience?.skills) ? workExperience.skills : (workExperience?.skills ? [workExperience.skills] : []),
+        currentSalary: '',
+        expectedSalary: workExperience?.expectedSalary || '',
+        noticePeriod: 'Immediate',
+      },
+      education: {
+        tenthOrTwelfth: {
+          qualificationType: education?.tenthOrTwelfth?.qualificationType || '12th / Intermediate',
+          board: education?.tenthOrTwelfth?.board || 'State Board',
+          instituteName: education?.tenthOrTwelfth?.instituteName || '',
+          yearOfPassing: Number(education?.tenthOrTwelfth?.yearOfPassing) || new Date().getFullYear(),
+          percentageOrCgpa: education?.tenthOrTwelfth?.percentageOrCgpa || '',
+        },
+        graduation: {
+          degree: education?.graduation?.degree || 'Bachelor Degree',
+          specialization: education?.graduation?.specialization || '',
+          university: education?.graduation?.university || '',
+          collegeName: education?.graduation?.collegeName || '',
+          yearOfPassing: Number(education?.graduation?.yearOfPassing) || new Date().getFullYear(),
+          percentageOrCgpa: education?.graduation?.percentageOrCgpa || '',
+        },
+      },
+      resume: resumeData,
+      payment: {
+        amount: Number(process.env.PAYMENT_AMOUNT) || 1000,
+        status: 'PENDING',
+        transactionId: null,
+      },
+      status: 'PAYMENT_PENDING',
+      statusHistory: [
+        {
+          previousStatus: null,
+          newStatus: 'PAYMENT_PENDING',
+          changedByName: 'Applicant (System)',
+          changedAt: new Date(),
+          remarks: 'Application submitted successfully. Registration fee payment pending.',
+        },
+      ],
+    });
+
+    await application.save();
+
+    // 6. Asynchronously trigger initial application submission email
+    sendApplicationSubmittedEmail(application).catch((err) => {
+      console.error('Non-blocking email sending error:', err);
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Application registered successfully. Please proceed to complete the payment.',
+      applicationId: application.applicationId,
+      amount: application.payment.amount,
+    });
+  } catch (error) {
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    next(error);
+  }
+};
+
+/**
+ * @desc    Get public application details for payment page
+ * @route   GET /api/applications/public/:applicationId
+ * @access  Public
+ */
+const getPublicApplication = async (req, res, next) => {
+  try {
+    const { applicationId } = req.params;
+
+    const application = await Application.findOne({ applicationId }).select(
+      'applicationId personalDetails.fullName personalDetails.email personalDetails.phone applicantType payment status createdAt'
+    );
+
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: 'Application not found with the specified ID.',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      application: {
+        applicationId: application.applicationId,
+        fullName: application.personalDetails.fullName,
+        email: application.personalDetails.email,
+        phone: application.personalDetails.phone,
+        applicantType: application.applicantType,
+        payment: application.payment,
+        status: application.status,
+        createdAt: application.createdAt,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Submit payment transaction ID (UTR)
+ * @route   POST /api/applications/:applicationId/payment
+ * @access  Public
+ */
+const submitPaymentTransaction = async (req, res, next) => {
+  try {
+    const { applicationId } = req.params;
+    const { transactionId } = req.body;
+
+    if (!transactionId || !transactionId.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter a valid Transaction ID / UTR number.',
+      });
+    }
+
+    const application = await Application.findOne({ applicationId });
+
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: 'Application not found with the specified ID.',
+      });
+    }
+
+    // Update payment details
+    application.payment.transactionId = transactionId.trim();
+    application.payment.submittedAt = new Date();
+
+    // Add status history entry
+    application.statusHistory.push({
+      previousStatus: application.status,
+      newStatus: application.status,
+      changedByName: 'Applicant (Self)',
+      changedAt: new Date(),
+      remarks: `Transaction ID (${transactionId.trim()}) submitted for verification.`,
+    });
+
+    await application.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Transaction details submitted successfully. Awaiting administrative verification.',
+      application: {
+        applicationId: application.applicationId,
+        payment: application.payment,
+        status: application.status,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Get logged-in candidate's full application & status timeline
+ * @route   GET /api/applications/my
+ * @access  Private (Candidate with verified payment)
+ */
+const getMyApplication = async (req, res, next) => {
+  try {
+    let application = null;
+
+    if (req.user.applicationId) {
+      application = await Application.findOne({ applicationId: req.user.applicationId });
+    } else {
+      application = await Application.findOne({ 'personalDetails.email': req.user.email });
+    }
+
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: 'No application profile found for your account.',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      application,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Download own uploaded resume
+ * @route   GET /api/applications/my/resume
+ * @access  Private
+ */
+const downloadMyResume = async (req, res, next) => {
+  try {
+    let application = null;
+
+    if (req.user.applicationId) {
+      application = await Application.findOne({ applicationId: req.user.applicationId });
+    } else {
+      application = await Application.findOne({ 'personalDetails.email': req.user.email });
+    }
+
+    if (!application || !application.resume || !application.resume.filePath) {
+      return res.status(404).json({
+        success: false,
+        message: 'Resume file not found for your application.',
+      });
+    }
+
+    const filePath = path.resolve(application.resume.filePath);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Resume file does not exist on the server storage.',
+      });
+    }
+
+    res.download(filePath, application.resume.originalName);
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  submitApplication,
+  getPublicApplication,
+  submitPaymentTransaction,
+  getMyApplication,
+  downloadMyResume,
+};
