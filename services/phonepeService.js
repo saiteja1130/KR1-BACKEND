@@ -33,8 +33,7 @@ class PhonePeService {
       );
       this.initialized = true;
       console.log(
-        `✅ PhonePe StandardCheckoutClient initialized in ${
-          this.env === Env.PRODUCTION ? 'PRODUCTION' : 'SANDBOX'
+        `✅ PhonePe StandardCheckoutClient initialized in ${this.env === Env.PRODUCTION ? 'PRODUCTION' : 'SANDBOX'
         } mode.`
       );
     } catch (error) {
@@ -57,7 +56,7 @@ class PhonePeService {
    *
    * @param {Object} params
    * @param {string} params.merchantOrderId - Unique order ID
-   * @param {number} params.amountInPaise - Payable amount in paise (₹1,000 = 100000 paise)
+   * @param {number} params.amountInPaise - Payable amount in paise (₹1,000 = 150000 paise)
    * @param {string} params.redirectUrl - URL to redirect browser after payment
    * @param {string} [params.candidatePhone] - Candidate phone number for UPI prefill
    * @param {string} [params.candidateName] - Candidate name

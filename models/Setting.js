@@ -18,7 +18,7 @@ const settingSchema = new mongoose.Schema(
     baseApplicationFee: {
       type: Number,
       required: true,
-      default: 1000,
+      default: 1500,
       min: 0,
     },
     isReferralEnabled: {

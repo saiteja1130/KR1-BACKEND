@@ -114,7 +114,7 @@ const submitApplication = async (req, res, next) => {
 
     // 3. Referral verification & Dynamic fee calculation
     const settings = await referralService.getReferralSettings();
-    const baseFee = settings.baseApplicationFee ?? (Number(process.env.PAYMENT_AMOUNT) || 1000);
+    const baseFee = settings.baseApplicationFee ?? (Number(process.env.PAYMENT_AMOUNT) || 1500);
     let payableAmount = baseFee;
     let referralData = {
       isReferred: false,

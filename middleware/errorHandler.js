@@ -26,8 +26,8 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Mongoose Duplicate Key Error (Code 11000)
-  if (err.code === 11000) {
+  // Mongoose Duplicate Key Error (Code 11500)
+  if (err.code === 11500) {
     const field = Object.keys(err.keyValue)[0];
     const value = err.keyValue[field];
     return res.status(400).json({

@@ -41,14 +41,14 @@ const runTests = async () => {
     const testSetting = new Setting({
       key: 'referral_settings',
       referralDiscount: 250,
-      baseApplicationFee: 1000,
+      baseApplicationFee: 1500,
       isReferralEnabled: true,
       requireVerifiedReferrer: true,
     });
 
     if (
       testSetting.referralDiscount !== 250 ||
-      testSetting.baseApplicationFee !== 1000 ||
+      testSetting.baseApplicationFee !== 1500 ||
       testSetting.requireVerifiedReferrer !== true
     ) {
       throw new Error('Setting model fields did not instantiate properly');
@@ -119,7 +119,7 @@ const runTests = async () => {
         referrerPhone: '9876500001',
         referrerApplicationId: 'KR1-2026-0001',
         discountAmount: 200,
-        originalAmount: 1000,
+        originalAmount: 1500,
         isVerified: true,
         verifiedAt: new Date(),
       },
@@ -179,7 +179,7 @@ const runTests = async () => {
 
   // Test 5: Dynamic Fee & Discount Calculations
   try {
-    const baseFee = 1000;
+    const baseFee = 1500;
     const discount = 200;
     const payableFee = Math.max(0, baseFee - discount);
     const amountInPaise = payableFee * 100;

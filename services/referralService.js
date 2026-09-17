@@ -58,7 +58,7 @@ export const getReferralSettings = async () => {
     return {
       key: 'referral_settings',
       referralDiscount: 200,
-      baseApplicationFee: 1000,
+      baseApplicationFee: 1500,
       isReferralEnabled: true,
       requireVerifiedReferrer: false,
     };
@@ -70,7 +70,7 @@ export const getReferralSettings = async () => {
     settings = new Setting({
       key: 'referral_settings',
       referralDiscount: 200,
-      baseApplicationFee: 1000,
+      baseApplicationFee: 1500,
       isReferralEnabled: true,
       requireVerifiedReferrer: false,
     });
@@ -233,7 +233,7 @@ export const validateReferrer = async ({
     };
   }
 
-  const baseFee = settings.baseApplicationFee ?? 1000;
+  const baseFee = settings.baseApplicationFee ?? 1500;
   const discountAmount = settings.referralDiscount ?? 200;
   const finalAmount = Math.max(0, baseFee - discountAmount);
 

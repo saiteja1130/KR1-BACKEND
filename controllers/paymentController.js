@@ -43,7 +43,7 @@ const createPaymentOrder = async (req, res, next) => {
     }
 
     // 3. Server-side amount calculation (respect discounted fee stored on application)
-    const amount = application.payment?.amount || Number(process.env.PAYMENT_AMOUNT) || 1000;
+    const amount = application.payment?.amount || Number(process.env.PAYMENT_AMOUNT) || 1500;
     const amountInPaise = Math.round(amount * 100); // e.g. ₹800 = 80000 paise
 
     // 4. Generate unique merchantOrderId (PhonePe constraints: alphanumeric + underscores/hyphens)

@@ -64,7 +64,7 @@ const getDashboardStats = async (req, res, next) => {
       'payment.status': 'RECEIVED',
     }).select('payment.amount');
     const totalRevenue = verifiedApplications.reduce(
-      (acc, app) => acc + (app.payment?.amount !== undefined ? app.payment.amount : 1000),
+      (acc, app) => acc + (app.payment?.amount !== undefined ? app.payment.amount : 1500),
       0
     );
 
@@ -398,7 +398,7 @@ const createAdminApplication = async (req, res, next) => {
     }
     const isReferred = Boolean(referral?.isReferred || req.body.isReferred);
     const discountAmount = Number(referral?.discountAmount || req.body.discountAmount || 0);
-    const originalAmount = Number(referral?.originalAmount || req.body.originalAmount || 1000);
+    const originalAmount = Number(referral?.originalAmount || req.body.originalAmount || 1500);
     const calculatedPayable = Math.max(0, originalAmount - discountAmount);
 
     if (!personalDetails?.fullName || !personalDetails?.email || !personalDetails?.phone) {
@@ -651,7 +651,7 @@ const adjustCandidateDiscount = async (req, res, next) => {
       });
     }
 
-    const originalBaseFee = application.referral?.originalAmount || 1000;
+    const originalBaseFee = application.referral?.originalAmount || 1500;
     let newDiscount = application.referral?.discountAmount || 0;
     let newPayable = application.payment?.amount !== undefined ? application.payment.amount : originalBaseFee;
 

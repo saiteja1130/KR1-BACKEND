@@ -28,11 +28,11 @@ const paymentSchema = new mongoose.Schema(
     },
     amount: {
       type: Number,
-      required: true, // In Rupees (e.g. 1000)
+      required: true, // In Rupees (e.g. 1500)
     },
     amountInPaise: {
       type: Number,
-      required: true, // In Paise (e.g. 100000)
+      required: true, // In Paise (e.g. 150000)
     },
     currency: {
       type: String,

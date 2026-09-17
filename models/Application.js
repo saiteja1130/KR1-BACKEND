@@ -156,7 +156,7 @@ const applicationSchema = new mongoose.Schema(
     payment: {
       amount: {
         type: Number,
-        default: 1000,
+        default: 1500,
       },
       transactionId: {
         type: String,
@@ -255,7 +255,7 @@ const applicationSchema = new mongoose.Schema(
       },
       originalAmount: {
         type: Number,
-        default: 1000,
+        default: 1500,
       },
       isVerified: {
         type: Boolean,
