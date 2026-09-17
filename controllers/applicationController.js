@@ -321,6 +321,14 @@ const submitPaymentTransaction = async (req, res, next) => {
       });
     }
 
+    // Validate minimum UTR length
+    if (transactionId.trim().length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'Transaction ID appears too short. Please enter a valid 12-digit UTR number.',
+      });
+    }
+
     const application = await Application.findOne({ applicationId });
 
     if (!application) {
@@ -330,8 +338,21 @@ const submitPaymentTransaction = async (req, res, next) => {
       });
     }
 
+    // Guard: block re-submission if payment is already verified
+    if (
+      application.payment.status === 'RECEIVED' ||
+      application.status === 'PAYMENT_RECEIVED' ||
+      application.status === 'CONFIRMED'
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'Your payment has already been verified. No further action is required.',
+        isAlreadyVerified: true,
+      });
+    }
+
     // Update payment details
-    application.payment.transactionId = transactionId.trim();
+    application.payment.transactionId = transactionId.trim().toUpperCase();
     application.payment.submittedAt = new Date();
 
     // Add status history entry
@@ -340,7 +361,7 @@ const submitPaymentTransaction = async (req, res, next) => {
       newStatus: application.status,
       changedByName: 'Applicant (Self)',
       changedAt: new Date(),
-      remarks: `Transaction ID (${transactionId.trim()}) submitted for verification.`,
+      remarks: `Transaction ID (${transactionId.trim().toUpperCase()}) submitted for verification.`,
     });
 
     await application.save();
