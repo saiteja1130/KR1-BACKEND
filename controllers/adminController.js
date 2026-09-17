@@ -345,13 +345,18 @@ const downloadResume = async (req, res, next) => {
       });
     }
 
-    const filePath = path.resolve(application.resume.filePath);
+    let filePath = path.resolve(application.resume.filePath);
 
     if (!fs.existsSync(filePath)) {
-      return res.status(404).json({
-        success: false,
-        message: 'Resume file does not exist on server storage.',
-      });
+      const fallbackPath = path.resolve(process.cwd(), 'uploads', 'resumes', application.resume.fileName || path.basename(application.resume.filePath));
+      if (fs.existsSync(fallbackPath)) {
+        filePath = fallbackPath;
+      } else {
+        return res.status(404).json({
+          success: false,
+          message: 'Resume file does not exist on server storage.',
+        });
+      }
     }
 
     res.download(filePath, application.resume.originalName);
