@@ -1,4 +1,4 @@
-const nodemailer = require('nodemailer');
+import nodemailer from 'nodemailer';
 
 // Configure Transporter
 const createTransporter = () => {
@@ -269,7 +269,7 @@ const sendApplicationRejectedEmail = async (application, remarks = '') => {
   });
 };
 
-module.exports = {
+export {
   sendApplicationSubmittedEmail,
   sendPaymentReceivedCredentialsEmail,
   sendApplicationUnderReviewEmail,

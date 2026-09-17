@@ -1,6 +1,6 @@
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-const Application = require('../models/Application');
+import jwt from 'jsonwebtoken';
+import User from '../models/User.js';
+import Application from '../models/Application.js';
 
 // Helper to generate JWT Token
 const generateToken = (id, role) => {
@@ -201,7 +201,7 @@ const changePassword = async (req, res, next) => {
   }
 };
 
-module.exports = {
+export {
   login,
   getMe,
   changePassword,

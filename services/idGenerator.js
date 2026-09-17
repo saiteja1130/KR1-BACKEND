@@ -1,4 +1,4 @@
-const Application = require('../models/Application');
+import Application from '../models/Application.js';
 
 /**
  * Generates a unique, human-readable Application ID
@@ -37,4 +37,4 @@ async function generateApplicationId() {
   }
 }
 
-module.exports = { generateApplicationId };
+export { generateApplicationId };

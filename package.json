@@ -8,11 +8,19 @@
     "dev": "node server.js",
     "seed:admin": "node scripts/seedAdmin.js"
   },
-  "keywords": ["kr1", "express", "mongoose", "mongodb-atlas", "payment", "admin"],
+  "keywords": [
+    "kr1",
+    "express",
+    "mongoose",
+    "mongodb-atlas",
+    "payment",
+    "admin"
+  ],
   "author": "KR Material and Manpower",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "dependencies": {
+    "@phonepe-pg/pg-sdk-node": "^2.0.6",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",

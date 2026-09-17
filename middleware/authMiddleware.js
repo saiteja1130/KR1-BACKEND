@@ -1,6 +1,6 @@
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-const Application = require('../models/Application');
+import jwt from 'jsonwebtoken';
+import User from '../models/User.js';
+import Application from '../models/Application.js';
 
 /**
  * Protect routes - Verifies JWT token and attaches req.user
@@ -110,7 +110,7 @@ const checkPaymentVerified = async (req, res, next) => {
   }
 };
 
-module.exports = {
+export {
   protect,
   authorize,
   checkPaymentVerified,

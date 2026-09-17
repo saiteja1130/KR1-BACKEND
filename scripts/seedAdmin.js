@@ -1,6 +1,6 @@
-require('dotenv').config({ path: require('path').resolve(__dirname, '..', '.env') });
-const mongoose = require('mongoose');
-const User = require('../models/User');
+import 'dotenv/config';
+import mongoose from 'mongoose';
+import User from '../models/User.js';
 
 const seedAdmin = async () => {
   try {

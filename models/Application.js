@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const applicationSchema = new mongoose.Schema(
   {
@@ -257,6 +257,43 @@ const applicationSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    referral: {
+      isReferred: {
+        type: Boolean,
+        default: false,
+      },
+      referrerName: {
+        type: String,
+        trim: true,
+        default: '',
+      },
+      referrerPhone: {
+        type: String,
+        trim: true,
+        default: '',
+      },
+      referrerApplicationId: {
+        type: String,
+        trim: true,
+        default: '',
+      },
+      discountAmount: {
+        type: Number,
+        default: 0,
+      },
+      originalAmount: {
+        type: Number,
+        default: 1000,
+      },
+      isVerified: {
+        type: Boolean,
+        default: false,
+      },
+      verifiedAt: {
+        type: Date,
+        default: null,
+      },
+    },
   },
   {
     timestamps: true,
@@ -269,8 +306,10 @@ applicationSchema.index({ 'payment.status': 1 });
 applicationSchema.index({ 'personalDetails.email': 1 });
 applicationSchema.index({ 'personalDetails.phone': 1 });
 applicationSchema.index({ 'payment.transactionId': 1 });
+applicationSchema.index({ 'referral.isReferred': 1 });
+applicationSchema.index({ 'referral.referrerPhone': 1 });
 applicationSchema.index({ createdAt: -1 });
 
 const Application = mongoose.model('Application', applicationSchema);
 
-module.exports = Application;
+export default Application;

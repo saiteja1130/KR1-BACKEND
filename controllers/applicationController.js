@@ -1,8 +1,9 @@
-const path = require('path');
-const fs = require('fs');
-const Application = require('../models/Application');
-const { generateApplicationId } = require('../services/idGenerator');
-const { sendApplicationSubmittedEmail } = require('../services/emailService');
+import path from 'path';
+import fs from 'fs';
+import Application from '../models/Application.js';
+import { generateApplicationId } from '../services/idGenerator.js';
+import { sendApplicationSubmittedEmail } from '../services/emailService.js';
+import referralService from '../services/referralService.js';
 
 /**
  * @desc    Submit a new job/manpower application
@@ -23,6 +24,7 @@ const submitApplication = async (req, res, next) => {
     let personalDetails = req.body.personalDetails;
     let workExperience = req.body.workExperience;
     let education = req.body.education;
+    let referral = req.body.referral;
     const applicantType = req.body.applicantType;
 
     if (typeof personalDetails === 'string') {
@@ -46,6 +48,14 @@ const submitApplication = async (req, res, next) => {
         education = JSON.parse(education);
       } catch (e) {
         education = {};
+      }
+    }
+
+    if (typeof referral === 'string') {
+      try {
+        referral = JSON.parse(referral);
+      } catch (e) {
+        referral = null;
       }
     }
 
@@ -102,10 +112,56 @@ const submitApplication = async (req, res, next) => {
       });
     }
 
-    // 3. Generate unique human-readable Application ID
+    // 3. Referral verification & Dynamic fee calculation
+    const settings = await referralService.getReferralSettings();
+    const baseFee = settings.baseApplicationFee ?? (Number(process.env.PAYMENT_AMOUNT) || 1000);
+    let payableAmount = baseFee;
+    let referralData = {
+      isReferred: false,
+      referrerName: '',
+      referrerPhone: '',
+      referrerApplicationId: '',
+      discountAmount: 0,
+      originalAmount: baseFee,
+      isVerified: false,
+      verifiedAt: null,
+    };
+
+    if (referral && (referral.isReferred === true || referral.isReferred === 'true')) {
+      const refValidation = await referralService.validateReferrer({
+        referrerName: referral.referrerName,
+        referrerPhone: referral.referrerPhone,
+        candidatePhone: personalDetails.phone,
+        candidateEmail: personalDetails.email,
+      });
+
+      if (!refValidation.isValid) {
+        if (req.file && fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+        return res.status(400).json({
+          success: false,
+          message: refValidation.message || 'Invalid referrer details provided.',
+        });
+      }
+
+      payableAmount = refValidation.finalAmount;
+      referralData = {
+        isReferred: true,
+        referrerName: refValidation.referrerName,
+        referrerPhone: referral.referrerPhone ? referral.referrerPhone.trim() : '',
+        referrerApplicationId: refValidation.referrerApplicationId,
+        discountAmount: refValidation.discountAmount,
+        originalAmount: refValidation.baseFee,
+        isVerified: true,
+        verifiedAt: new Date(),
+      };
+    }
+
+    // 4. Generate unique human-readable Application ID
     const applicationId = await generateApplicationId();
 
-    // 4. Build Resume Object
+    // 5. Build Resume Object
     const resumeData = {
       fileName: req.file.filename,
       originalName: req.file.originalname,
@@ -115,7 +171,7 @@ const submitApplication = async (req, res, next) => {
       uploadedAt: new Date(),
     };
 
-    // 5. Create new Application document
+    // 6. Create new Application document
     const application = new Application({
       applicationId,
       personalDetails: {
@@ -167,10 +223,11 @@ const submitApplication = async (req, res, next) => {
       },
       resume: resumeData,
       payment: {
-        amount: Number(process.env.PAYMENT_AMOUNT) || 1000,
+        amount: payableAmount,
         status: 'PENDING',
         transactionId: null,
       },
+      referral: referralData,
       status: 'PAYMENT_PENDING',
       statusHistory: [
         {
@@ -178,14 +235,16 @@ const submitApplication = async (req, res, next) => {
           newStatus: 'PAYMENT_PENDING',
           changedByName: 'Applicant (System)',
           changedAt: new Date(),
-          remarks: 'Application submitted successfully. Registration fee payment pending.',
+          remarks: referralData.isReferred
+            ? `Application submitted with member referral discount (-₹${referralData.discountAmount}). Payable fee: ₹${payableAmount}.`
+            : 'Application submitted successfully. Registration fee payment pending.',
         },
       ],
     });
 
     await application.save();
 
-    // 6. Asynchronously trigger initial application submission email
+    // 7. Asynchronously trigger initial application submission email
     sendApplicationSubmittedEmail(application).catch((err) => {
       console.error('Non-blocking email sending error:', err);
     });
@@ -195,6 +254,8 @@ const submitApplication = async (req, res, next) => {
       message: 'Application registered successfully. Please proceed to complete the payment.',
       applicationId: application.applicationId,
       amount: application.payment.amount,
+      discountAmount: referralData.discountAmount,
+      referral: application.referral,
     });
   } catch (error) {
     if (req.file && fs.existsSync(req.file.path)) {
@@ -214,7 +275,7 @@ const getPublicApplication = async (req, res, next) => {
     const { applicationId } = req.params;
 
     const application = await Application.findOne({ applicationId }).select(
-      'applicationId personalDetails.fullName personalDetails.email personalDetails.phone applicantType payment status createdAt'
+      'applicationId personalDetails.fullName personalDetails.email personalDetails.phone applicantType payment referral status createdAt'
     );
 
     if (!application) {
@@ -233,6 +294,7 @@ const getPublicApplication = async (req, res, next) => {
         phone: application.personalDetails.phone,
         applicantType: application.applicantType,
         payment: application.payment,
+        referral: application.referral,
         status: application.status,
         createdAt: application.createdAt,
       },
@@ -365,10 +427,64 @@ const downloadMyResume = async (req, res, next) => {
   }
 };
 
-module.exports = {
+/**
+ * @desc    Get public referral program info
+ * @route   GET /api/applications/referral-info
+ * @access  Public
+ */
+const getReferralInfo = async (req, res, next) => {
+  try {
+    const settings = await referralService.getReferralSettings();
+    res.status(200).json({
+      success: true,
+      isReferralEnabled: settings.isReferralEnabled,
+      referralDiscount: settings.referralDiscount,
+      baseApplicationFee: settings.baseApplicationFee,
+      requireVerifiedReferrer: settings.requireVerifiedReferrer,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Validate a referrer name and phone number
+ * @route   POST /api/applications/validate-referral
+ * @access  Public
+ */
+const validateReferral = async (req, res, next) => {
+  try {
+    const { referrerName, referrerPhone, candidatePhone, candidateEmail } = req.body;
+    const result = await referralService.validateReferrer({
+      referrerName,
+      referrerPhone,
+      candidatePhone,
+      candidateEmail,
+    });
+
+    if (!result.isValid) {
+      return res.status(400).json({
+        success: false,
+        message: result.message,
+        isReferralEnabled: result.isReferralEnabled,
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      ...result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export {
   submitApplication,
   getPublicApplication,
   submitPaymentTransaction,
   getMyApplication,
   downloadMyResume,
+  getReferralInfo,
+  validateReferral,
 };

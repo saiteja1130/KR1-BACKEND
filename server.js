@@ -1,15 +1,21 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const morgan = require('morgan');
-const path = require('path');
-const connectDB = require('./config/db');
-const errorHandler = require('./middleware/errorHandler');
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import morgan from 'morgan';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import mongoose from 'mongoose';
+import connectDB from './config/db.js';
+import errorHandler from './middleware/errorHandler.js';
 
 // Route imports
-const authRoutes = require('./routes/authRoutes');
-const applicationRoutes = require('./routes/applicationRoutes');
-const adminRoutes = require('./routes/adminRoutes');
+import authRoutes from './routes/authRoutes.js';
+import applicationRoutes from './routes/applicationRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Initialize Express App
 const app = express();
@@ -38,12 +44,20 @@ app.use(
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-verify'],
   })
 );
 
 // Middlewares
-app.use(express.json({ limit: '10mb' }));
+// Preserve rawBody for PhonePe webhook signature verification
+app.use(
+  express.json({
+    limit: '10mb',
+    verify: (req, res, buf) => {
+      req.rawBody = buf.toString('utf8');
+    },
+  })
+);
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(morgan('dev'));
 
@@ -72,6 +86,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/payment', paymentRoutes);
 
 // Global 404 Handler for undefined API routes
 app.use((req, res, next) => {
@@ -100,4 +115,4 @@ process.on('unhandledRejection', (err) => {
   // server.close(() => process.exit(1));
 });
 
-module.exports = app;
+export default app;

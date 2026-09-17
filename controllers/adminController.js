@@ -1,15 +1,16 @@
-const crypto = require('crypto');
-const path = require('path');
-const fs = require('fs');
-const Application = require('../models/Application');
-const User = require('../models/User');
-const { generateApplicationId } = require('../services/idGenerator');
-const {
+import crypto from 'crypto';
+import path from 'path';
+import fs from 'fs';
+import Application from '../models/Application.js';
+import User from '../models/User.js';
+import { generateApplicationId } from '../services/idGenerator.js';
+import {
   sendPaymentReceivedCredentialsEmail,
   sendApplicationUnderReviewEmail,
   sendApplicationConfirmedEmail,
   sendApplicationRejectedEmail,
-} = require('../services/emailService');
+} from '../services/emailService.js';
+import referralService from '../services/referralService.js';
 
 /**
  * Helper to generate random readable temporary password
@@ -59,10 +60,13 @@ const getDashboardStats = async (req, res, next) => {
         .select('applicationId personalDetails payment createdAt'),
     ]);
 
-    const verifiedPaymentsCount = await Application.countDocuments({
+    const verifiedApplications = await Application.find({
       'payment.status': 'RECEIVED',
-    });
-    const totalRevenue = verifiedPaymentsCount * (Number(process.env.PAYMENT_AMOUNT) || 1000);
+    }).select('payment.amount');
+    const totalRevenue = verifiedApplications.reduce(
+      (acc, app) => acc + (app.payment?.amount !== undefined ? app.payment.amount : 1000),
+      0
+    );
 
     res.status(200).json({
       success: true,
@@ -383,6 +387,15 @@ const createAdminApplication = async (req, res, next) => {
       try { education = JSON.parse(education); } catch (e) { education = {}; }
     }
 
+    let referral = req.body.referral;
+    if (typeof referral === 'string') {
+      try { referral = JSON.parse(referral); } catch (e) { referral = {}; }
+    }
+    const isReferred = Boolean(referral?.isReferred || req.body.isReferred);
+    const discountAmount = Number(referral?.discountAmount || req.body.discountAmount || 0);
+    const originalAmount = Number(referral?.originalAmount || req.body.originalAmount || 1000);
+    const calculatedPayable = Math.max(0, originalAmount - discountAmount);
+
     if (!personalDetails?.fullName || !personalDetails?.email || !personalDetails?.phone) {
       return res.status(400).json({
         success: false,
@@ -465,13 +478,23 @@ const createAdminApplication = async (req, res, next) => {
       },
       resume: resumeData,
       payment: {
-        amount: Number(req.body.amount) || Number(process.env.PAYMENT_AMOUNT) || 1000,
+        amount: req.body.amount !== undefined ? Number(req.body.amount) : calculatedPayable,
         status: paymentStatus,
         transactionId: transactionId || (paymentStatus === 'RECEIVED' ? 'ADMIN_DIRECT' : null),
         submittedAt: new Date(),
         verifiedAt: paymentStatus === 'RECEIVED' ? new Date() : null,
         verifiedBy: paymentStatus === 'RECEIVED' ? req.user._id : null,
         remarks: 'Admin registration',
+      },
+      referral: {
+        isReferred,
+        referrerName: referral?.referrerName || req.body.referrerName || '',
+        referrerPhone: referral?.referrerPhone || req.body.referrerPhone || '',
+        referrerApplicationId: referral?.referrerApplicationId || req.body.referrerApplicationId || '',
+        discountAmount,
+        originalAmount,
+        isVerified: isReferred,
+        verifiedAt: isReferred ? new Date() : null,
       },
       status: status,
       statusHistory: [
@@ -527,11 +550,166 @@ const createAdminApplication = async (req, res, next) => {
   }
 };
 
-module.exports = {
+/**
+ * @desc    Get referral settings and analytics
+ * @route   GET /api/admin/settings/referral
+ * @access  Private (Admin)
+ */
+const getReferralSettings = async (req, res, next) => {
+  try {
+    const settings = await referralService.getReferralSettings();
+
+    const [
+      totalReferred,
+      verifiedReferred,
+      referredApplications,
+    ] = await Promise.all([
+      Application.countDocuments({ 'referral.isReferred': true }),
+      Application.countDocuments({
+        'referral.isReferred': true,
+        $or: [
+          { status: { $in: ['PAYMENT_RECEIVED', 'APPLICATION_PENDING', 'CONFIRMED'] } },
+          { 'payment.status': 'RECEIVED' },
+        ],
+      }),
+      Application.find({ 'referral.isReferred': true })
+        .sort({ createdAt: -1 })
+        .select('applicationId personalDetails applicantType payment referral status createdAt'),
+    ]);
+
+    // Calculate total discount granted on verified payments
+    const verifiedReferredApps = await Application.find({
+      'referral.isReferred': true,
+      'payment.status': 'RECEIVED',
+    }).select('referral.discountAmount');
+
+    const totalDiscountGranted = verifiedReferredApps.reduce(
+      (acc, app) => acc + (app.referral?.discountAmount || 0),
+      0
+    );
+
+    res.status(200).json({
+      success: true,
+      settings,
+      analytics: {
+        totalReferred,
+        verifiedReferred,
+        totalDiscountGranted,
+      },
+      referredApplications,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Update referral settings
+ * @route   PUT /api/admin/settings/referral
+ * @access  Private (Admin)
+ */
+const updateReferralSettings = async (req, res, next) => {
+  try {
+    const updatedSettings = await referralService.updateReferralSettings(
+      req.body,
+      req.user._id
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Referral program settings updated successfully.',
+      settings: updatedSettings,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Adjust discount or payable amount for a candidate application
+ * @route   PATCH /api/admin/applications/:id/discount
+ * @access  Private (Admin)
+ */
+const adjustCandidateDiscount = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { discountAmount, customAmount, remarks } = req.body;
+
+    const application = await Application.findOne({
+      $or: [{ applicationId: id }, { _id: id.match(/^[0-9a-fA-F]{24}$/) ? id : null }],
+    });
+
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: 'Application not found.',
+      });
+    }
+
+    const originalBaseFee = application.referral?.originalAmount || 1000;
+    let newDiscount = application.referral?.discountAmount || 0;
+    let newPayable = application.payment?.amount !== undefined ? application.payment.amount : originalBaseFee;
+
+    if (discountAmount !== undefined) {
+      newDiscount = Math.max(0, Number(discountAmount) || 0);
+      newPayable = Math.max(0, originalBaseFee - newDiscount);
+    } else if (customAmount !== undefined) {
+      newPayable = Math.max(0, Number(customAmount) || 0);
+      newDiscount = Math.max(0, originalBaseFee - newPayable);
+    }
+
+    const prevAmount = application.payment.amount;
+    application.payment.amount = newPayable;
+
+    if (!application.referral) {
+      application.referral = {
+        isReferred: false,
+        referrerName: '',
+        referrerPhone: '',
+        referrerApplicationId: '',
+        discountAmount: 0,
+        originalAmount: originalBaseFee,
+        isVerified: false,
+        verifiedAt: null,
+      };
+    }
+
+    application.referral.discountAmount = newDiscount;
+    application.referral.originalAmount = originalBaseFee;
+
+    const auditRemarks =
+      remarks ||
+      `Admin adjusted fee from ₹${prevAmount} to ₹${newPayable} (Discount: ₹${newDiscount})`;
+
+    application.statusHistory.push({
+      previousStatus: application.status,
+      newStatus: application.status,
+      changedBy: req.user._id,
+      changedByName: req.user.name || 'Admin',
+      changedAt: new Date(),
+      remarks: auditRemarks,
+    });
+
+    await application.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Candidate fee adjusted successfully to ₹${newPayable} (Discount: ₹${newDiscount}).`,
+      application,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export {
   getDashboardStats,
   getApplications,
   getApplicationById,
   updateApplicationStatus,
   downloadResume,
   createAdminApplication,
+  getReferralSettings,
+  updateReferralSettings,
+  adjustCandidateDiscount,
 };
