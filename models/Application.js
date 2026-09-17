@@ -97,62 +97,34 @@ const applicationSchema = new mongoose.Schema(
       },
     },
     education: {
-      tenthOrTwelfth: {
-        qualificationType: {
-          type: String,
-          required: [true, '12th / Intermediate qualification type is required'],
-          default: '12th / Intermediate',
-        },
-        board: {
-          type: String,
-          required: [true, 'Board name is required'],
-          trim: true,
-        },
-        instituteName: {
-          type: String,
-          required: [true, 'School / College name is required'],
-          trim: true,
-        },
-        yearOfPassing: {
-          type: Number,
-          required: [true, 'Year of passing is required'],
-        },
-        percentageOrCgpa: {
-          type: String,
-          required: [true, 'Percentage / CGPA is required'],
-          trim: true,
-        },
+      qualificationLevel: {
+        type: String,
+        default: '12th / Intermediate',
+        trim: true,
       },
-      graduation: {
-        degree: {
-          type: String,
-          required: [true, 'Graduation degree is required'],
-          trim: true,
-        },
-        specialization: {
-          type: String,
-          required: [true, 'Graduation specialization is required'],
-          trim: true,
-        },
-        university: {
-          type: String,
-          required: [true, 'University name is required'],
-          trim: true,
-        },
-        collegeName: {
-          type: String,
-          required: [true, 'Graduation college name is required'],
-          trim: true,
-        },
-        yearOfPassing: {
-          type: Number,
-          required: [true, 'Graduation year of passing is required'],
-        },
-        percentageOrCgpa: {
-          type: String,
-          required: [true, 'Graduation percentage / CGPA is required'],
-          trim: true,
-        },
+      instituteName: {
+        type: String,
+        default: '',
+        trim: true,
+      },
+      boardOrUniversity: {
+        type: String,
+        default: '',
+        trim: true,
+      },
+      yearOfPassing: {
+        type: Number,
+        default: null,
+      },
+      percentageOrCgpa: {
+        type: String,
+        default: '',
+        trim: true,
+      },
+      specialization: {
+        type: String,
+        default: '',
+        trim: true,
       },
     },
     resume: {

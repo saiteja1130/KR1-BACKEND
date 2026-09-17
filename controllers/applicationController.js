@@ -205,21 +205,14 @@ const submitApplication = async (req, res, next) => {
         noticePeriod: 'Immediate',
       },
       education: {
-        tenthOrTwelfth: {
-          qualificationType: education?.tenthOrTwelfth?.qualificationType || '12th / Intermediate',
-          board: education?.tenthOrTwelfth?.board || 'State Board',
-          instituteName: education?.tenthOrTwelfth?.instituteName || '',
-          yearOfPassing: Number(education?.tenthOrTwelfth?.yearOfPassing) || new Date().getFullYear(),
-          percentageOrCgpa: education?.tenthOrTwelfth?.percentageOrCgpa || '',
-        },
-        graduation: {
-          degree: education?.graduation?.degree || 'Bachelor Degree',
-          specialization: education?.graduation?.specialization || '',
-          university: education?.graduation?.university || '',
-          collegeName: education?.graduation?.collegeName || '',
-          yearOfPassing: Number(education?.graduation?.yearOfPassing) || new Date().getFullYear(),
-          percentageOrCgpa: education?.graduation?.percentageOrCgpa || '',
-        },
+        // Support new flat schema (qualificationLevel, instituteName, boardOrUniversity)
+        // as well as old nested schema for backward compatibility
+        qualificationLevel: education?.qualificationLevel || education?.tenthOrTwelfth?.qualificationType || '12th / Intermediate',
+        instituteName: education?.instituteName || education?.tenthOrTwelfth?.instituteName || education?.graduation?.collegeName || '',
+        boardOrUniversity: education?.boardOrUniversity || education?.tenthOrTwelfth?.board || education?.graduation?.university || '',
+        yearOfPassing: Number(education?.yearOfPassing || education?.tenthOrTwelfth?.yearOfPassing || education?.graduation?.yearOfPassing) || new Date().getFullYear(),
+        percentageOrCgpa: education?.percentageOrCgpa || education?.tenthOrTwelfth?.percentageOrCgpa || education?.graduation?.percentageOrCgpa || '',
+        specialization: education?.specialization || education?.graduation?.specialization || '',
       },
       resume: resumeData,
       payment: {
