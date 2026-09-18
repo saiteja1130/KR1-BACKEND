@@ -32,7 +32,7 @@ async function generateApplicationId() {
     return `${prefix}${paddedNumber}`;
   } catch (error) {
     // Fallback in case of query failure
-    const randomSuffix = Math.floor(150000 + Math.random() * 900000);
+    const randomSuffix = Math.floor(149900 + Math.random() * 900000);
     return `${prefix}${randomSuffix}`;
   }
 }

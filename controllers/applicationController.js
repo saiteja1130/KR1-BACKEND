@@ -114,7 +114,7 @@ const submitApplication = async (req, res, next) => {
 
     // 3. Referral verification & Dynamic fee calculation
     const settings = await referralService.getReferralSettings();
-    const baseFee = settings.baseApplicationFee ?? (Number(process.env.PAYMENT_AMOUNT) || 1500);
+    const baseFee = settings.baseApplicationFee ?? (Number(process.env.PAYMENT_AMOUNT) || 1499);
     let payableAmount = baseFee;
     let referralData = {
       isReferred: false,
@@ -454,12 +454,15 @@ const downloadMyResume = async (req, res, next) => {
 const getReferralInfo = async (req, res, next) => {
   try {
     const settings = await referralService.getReferralSettings();
+    const discountPercent = settings.referralDiscountPercent ?? 10;
+    const discountAmount = Math.round(((settings.baseApplicationFee ?? 1499) * discountPercent) / 100);
     res.status(200).json({
       success: true,
       isReferralEnabled: settings.isReferralEnabled,
-      referralDiscount: settings.referralDiscount,
-      baseApplicationFee: settings.baseApplicationFee,
-      requireVerifiedReferrer: settings.requireVerifiedReferrer,
+      referralDiscountPercent: discountPercent,
+      referralDiscount: discountAmount,
+      baseApplicationFee: settings.baseApplicationFee ?? 1499,
+      requireVerifiedReferrer: false,
     });
   } catch (error) {
     next(error);

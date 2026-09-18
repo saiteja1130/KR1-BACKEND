@@ -57,8 +57,9 @@ export const getReferralSettings = async () => {
   if (mongoose.connection?.readyState !== 1) {
     return {
       key: 'referral_settings',
-      referralDiscount: 200,
-      baseApplicationFee: 1500,
+      referralDiscountPercent: 10,
+      referralDiscount: 150,
+      baseApplicationFee: 1499,
       isReferralEnabled: true,
       requireVerifiedReferrer: false,
     };
@@ -69,12 +70,20 @@ export const getReferralSettings = async () => {
   if (!settings) {
     settings = new Setting({
       key: 'referral_settings',
-      referralDiscount: 200,
-      baseApplicationFee: 1500,
+      referralDiscountPercent: 10,
+      referralDiscount: 150,
+      baseApplicationFee: 1499,
       isReferralEnabled: true,
       requireVerifiedReferrer: false,
     });
     await settings.save();
+  } else {
+    // Ensure referralDiscountPercent exists on legacy settings record
+    if (settings.referralDiscountPercent === undefined) {
+      settings.referralDiscountPercent = 10;
+      settings.referralDiscount = Math.round((settings.baseApplicationFee * 10) / 100);
+      await settings.save();
+    }
   }
 
   return settings;
@@ -90,20 +99,30 @@ export const updateReferralSettings = async (data, adminUserId) => {
     settings = new Setting({ key: 'referral_settings' });
   }
 
-  if (data.referralDiscount !== undefined) {
-    const discount = Number(data.referralDiscount);
-    if (isNaN(discount) || discount < 0) {
-      throw new Error('Referral discount must be a valid non-negative number.');
-    }
-    settings.referralDiscount = discount;
-  }
-
   if (data.baseApplicationFee !== undefined) {
     const fee = Number(data.baseApplicationFee);
     if (isNaN(fee) || fee < 0) {
       throw new Error('Base application fee must be a valid non-negative number.');
     }
     settings.baseApplicationFee = fee;
+  }
+
+  if (data.referralDiscountPercent !== undefined) {
+    const percent = Number(data.referralDiscountPercent);
+    if (isNaN(percent) || percent < 0 || percent > 100) {
+      throw new Error('Referral discount percent must be between 0% and 100%.');
+    }
+    settings.referralDiscountPercent = percent;
+    settings.referralDiscount = Math.round((settings.baseApplicationFee * percent) / 100);
+  } else if (data.referralDiscount !== undefined) {
+    const discount = Number(data.referralDiscount);
+    if (isNaN(discount) || discount < 0) {
+      throw new Error('Referral discount must be a valid non-negative number.');
+    }
+    settings.referralDiscount = discount;
+    if (settings.baseApplicationFee > 0) {
+      settings.referralDiscountPercent = Math.round((discount / settings.baseApplicationFee) * 100);
+    }
   }
 
   if (data.isReferralEnabled !== undefined) {
@@ -125,7 +144,8 @@ export const updateReferralSettings = async (data, adminUserId) => {
 };
 
 /**
- * Validates a referrer against the database
+ * Validates a referrer
+ * Referrals are open to anyone - no database check required!
  */
 export const validateReferrer = async ({
   referrerName,
@@ -146,14 +166,14 @@ export const validateReferrer = async ({
   if (!referrerName || !referrerName.trim()) {
     return {
       isValid: false,
-      message: 'Please provide the registered full name of your referrer.',
+      message: 'Please provide the name of your referrer.',
     };
   }
 
   if (!referrerPhone || !referrerPhone.trim()) {
     return {
       isValid: false,
-      message: 'Please provide the registered mobile number of your referrer.',
+      message: 'Please provide the mobile number of your referrer.',
     };
   }
 
@@ -175,76 +195,21 @@ export const validateReferrer = async ({
     };
   }
 
-  // If database is not connected, return message gracefully
-  if (mongoose.connection?.readyState !== 1) {
-    return {
-      isValid: false,
-      message: 'Database is currently offline. Referral verification could not be completed.',
-    };
-  }
-
-  // Build query to find matching member applications
-  const phoneRegex = new RegExp(cleanReferrerPhone + '$');
-  const query = {
-    'personalDetails.phone': { $regex: phoneRegex },
-    status: { $ne: 'REJECTED' },
-  };
-
-  // Prevent self-referral by email if candidate email provided
-  if (candidateEmail && candidateEmail.trim()) {
-    query['personalDetails.email'] = { $ne: candidateEmail.toLowerCase().trim() };
-  }
-
-  if (settings.requireVerifiedReferrer) {
-    query.$or = [
-      { status: { $in: ['PAYMENT_RECEIVED', 'APPLICATION_PENDING', 'CONFIRMED'] } },
-      { 'payment.status': 'RECEIVED' },
-    ];
-  }
-
-  const candidateMatches = await Application.find(query)
-    .sort({ createdAt: -1 })
-    .select('applicationId personalDetails status payment createdAt');
-
-  if (!candidateMatches || candidateMatches.length === 0) {
-    if (settings.requireVerifiedReferrer) {
-      return {
-        isValid: false,
-        message:
-          'No verified member found with this phone number. Referrers must have an active, verified registration.',
-      };
-    }
-    return {
-      isValid: false,
-      message:
-        'No registered member or employee found with this mobile number. Please check the number and try again.',
-    };
-  }
-
-  // Check if any matched candidate has a compatible name
-  const matchedCandidate = candidateMatches.find((app) =>
-    isNameMatch(app.personalDetails?.fullName, referrerName)
-  );
-
-  if (!matchedCandidate) {
-    return {
-      isValid: false,
-      message: `A member with this mobile number was found, but the name does not match "${referrerName.trim()}". Please verify the referrer's full registered name.`,
-    };
-  }
-
-  const baseFee = settings.baseApplicationFee ?? 1500;
-  const discountAmount = settings.referralDiscount ?? 200;
+  const baseFee = settings.baseApplicationFee ?? 1499;
+  const discountPercent = settings.referralDiscountPercent ?? 10;
+  const discountAmount = Math.round((baseFee * discountPercent) / 100);
   const finalAmount = Math.max(0, baseFee - discountAmount);
 
   return {
     isValid: true,
-    referrerApplicationId: matchedCandidate.applicationId,
-    referrerName: matchedCandidate.personalDetails.fullName,
+    referrerApplicationId: '',
+    referrerName: referrerName.trim(),
+    referrerPhone: cleanReferrerPhone,
+    discountPercent,
     discountAmount,
     baseFee,
     finalAmount,
-    message: `Referral verified! Referred by ${matchedCandidate.personalDetails.fullName}. ₹${discountAmount} discount applied.`,
+    message: `10% referral discount applied! Referred by ${referrerName.trim()} (-₹${discountAmount}).`,
   };
 };
 

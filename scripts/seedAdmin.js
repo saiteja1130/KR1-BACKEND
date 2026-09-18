@@ -17,8 +17,8 @@ const seedAdmin = async () => {
     console.log('🔄 Connecting to MongoDB for Admin seeding...');
     await mongoose.connect(mongoUri);
 
-    const adminEmail = (process.env.ADMIN_EMAIL || 'admin@kr1.in').toLowerCase().trim();
-    const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@kr1_2026!';
+    const adminEmail = (process.env.ADMIN_EMAIL || 'info@kr1.in').toLowerCase().trim();
+    const adminPassword = process.env.ADMIN_PASSWORD || '123456';
     const adminName = process.env.ADMIN_NAME || 'Super Admin';
     const adminPhone = process.env.ADMIN_PHONE || '+919666193543';
 

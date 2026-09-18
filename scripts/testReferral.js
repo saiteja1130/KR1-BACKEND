@@ -41,14 +41,14 @@ const runTests = async () => {
     const testSetting = new Setting({
       key: 'referral_settings',
       referralDiscount: 250,
-      baseApplicationFee: 1500,
+      baseApplicationFee: 1499,
       isReferralEnabled: true,
       requireVerifiedReferrer: true,
     });
 
     if (
       testSetting.referralDiscount !== 250 ||
-      testSetting.baseApplicationFee !== 1500 ||
+      testSetting.baseApplicationFee !== 1499 ||
       testSetting.requireVerifiedReferrer !== true
     ) {
       throw new Error('Setting model fields did not instantiate properly');
@@ -119,7 +119,7 @@ const runTests = async () => {
         referrerPhone: '9876500001',
         referrerApplicationId: 'KR1-2026-0001',
         discountAmount: 200,
-        originalAmount: 1500,
+        originalAmount: 1499,
         isVerified: true,
         verifiedAt: new Date(),
       },
@@ -177,50 +177,78 @@ const runTests = async () => {
     failed++;
   }
 
-  // Test 5: Dynamic Fee & Discount Calculations
+  // Test 5: Open Referral & 10% Discount Calculation
   try {
-    const baseFee = 1500;
-    const discount = 200;
-    const payableFee = Math.max(0, baseFee - discount);
-    const amountInPaise = payableFee * 100;
+    const baseFee = 1499;
+    const discountPercent = 10;
+    const expectedDiscount = Math.round((baseFee * discountPercent) / 100); // 150
+    const expectedPayable = baseFee - expectedDiscount; // 1349
 
-    if (payableFee !== 800 || amountInPaise !== 80000) {
-      throw new Error(`Fee calculation failed: payable=${payableFee}, paise=${amountInPaise}`);
+    const arbitraryReferral = await referralService.validateReferrer({
+      referrerName: 'Venkatesh Rao',
+      referrerPhone: '9848012345',
+      candidatePhone: '9123456789',
+    });
+
+    if (!arbitraryReferral.isValid) {
+      throw new Error(`Expected open referral to be valid, got error: ${arbitraryReferral.message}`);
     }
 
-    // Extreme discount test (discount > baseFee)
-    const largeDiscount = 1200;
-    const boundedPayable = Math.max(0, baseFee - largeDiscount);
-    if (boundedPayable !== 0) {
-      throw new Error(`Fee cannot be negative: got ${boundedPayable}`);
+    if (arbitraryReferral.discountAmount !== expectedDiscount) {
+      throw new Error(`Expected 10% discount of ₹${expectedDiscount}, got ₹${arbitraryReferral.discountAmount}`);
     }
 
-    console.log('✅ Test 5 Passed: Dynamic fee deductions and paise conversion for PhonePe gateway verified.');
+    if (arbitraryReferral.finalAmount !== expectedPayable) {
+      throw new Error(`Expected payable amount ₹${expectedPayable}, got ₹${arbitraryReferral.finalAmount}`);
+    }
+
+    const amountInPaise = arbitraryReferral.finalAmount * 100;
+    if (amountInPaise !== 134900) {
+      throw new Error(`Paise conversion failed: expected 134900, got ${amountInPaise}`);
+    }
+
+    console.log(`✅ Test 5 Passed: Open referral verified with 10% discount (₹${expectedDiscount} off standard ₹${baseFee} fee, payable: ₹${expectedPayable}).`);
     passed++;
   } catch (err) {
-    console.error('❌ Test 5 Failed: Dynamic Fee Calculation:', err.message);
+    console.error('❌ Test 5 Failed: Open Referral & 10% Calculation:', err.message);
     failed++;
   }
 
-  // Test 6: Database Integration (if MongoDB is connected)
+  // Test 6: Database Integration & Admin Credentials Verification
   const mongoUri = process.env.MONGODB_URI;
   if (mongoUri && !mongoUri.includes('example.mongodb.net')) {
     try {
       console.log('\n🔄 Attempting live MongoDB connection...');
-      await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 4000 });
+      await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 });
       console.log('✅ Connected to MongoDB.');
 
+      // Verify settings
       const settings = await referralService.getReferralSettings();
-      console.log(`Current DB Settings: Discount=₹${settings.referralDiscount}, BaseFee=₹${settings.baseApplicationFee}`);
+      console.log(`ℹ️ Current DB Settings: referralDiscountPercent=${settings.referralDiscountPercent}%, referralDiscount=₹${settings.referralDiscount}, baseFee=₹${settings.baseApplicationFee}`);
+
+      if (settings.referralDiscountPercent !== 10 || settings.referralDiscount !== 150) {
+        throw new Error(`DB Settings mismatch: expected 10% / ₹150, got ${settings.referralDiscountPercent}% / ₹${settings.referralDiscount}`);
+      }
+
+      // Verify Admin user
+      const User = (await import('../models/User.js')).default;
+      const adminUser = await User.findOne({ email: 'info@kr1.in' }).select('+password');
+      if (!adminUser) {
+        throw new Error('Admin user info@kr1.in not found in database!');
+      }
+      const isPassMatch = await adminUser.comparePassword('123456');
+      if (!isPassMatch) {
+        throw new Error('Admin password verification failed for info@kr1.in with 123456');
+      }
+      console.log('🔐 Verified Admin user: info@kr1.in password successfully authenticates with 123456!');
 
       await mongoose.disconnect();
-      console.log('✅ Test 6 Passed: Live database connectivity verified.');
+      console.log('✅ Test 6 Passed: Live database settings and admin credentials verified.');
       passed++;
     } catch (dbErr) {
-      console.log(`ℹ️ Note: Live MongoDB connection skipped (${dbErr.message}). Unit tests complete.`);
+      console.error('❌ Test 6 Failed: Live database check failed:', dbErr.message);
+      failed++;
     }
-  } else {
-    console.log('\nℹ️ Note: Live MongoDB URI not configured in .env (development mode). Mock & unit tests executed.');
   }
 
   console.log(`\n========================================`);

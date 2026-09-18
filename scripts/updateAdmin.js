@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import mongoose from 'mongoose';
+import Setting from '../models/Setting.js';
 import User from '../models/User.js';
 
 const updateAdminCredentials = async () => {
@@ -18,8 +19,8 @@ const updateAdminCredentials = async () => {
     await mongoose.connect(mongoUri);
     console.log('✅ Connected to MongoDB.');
 
-    const targetEmail = 'admin@gmail.com';
-    const targetPassword = '123456';
+    const targetEmail = (process.env.ADMIN_EMAIL || 'info@kr1.in').toLowerCase().trim();
+    const targetPassword = process.env.ADMIN_PASSWORD || '123456';
 
     // Check existing admins
     const existingAdmins = await User.find({ role: 'ADMIN' });
@@ -63,7 +64,31 @@ const updateAdminCredentials = async () => {
     const isMatch = await verifyUser.comparePassword(targetPassword);
     console.log(`🔐 Verification: Password match for ${targetEmail} = ${isMatch}`);
 
+    // Update global referral settings in DB
+    console.log('🔄 Updating database referral settings to 10% discount...');
+    const updatedSetting = await Setting.findOneAndUpdate(
+      { key: 'referral_settings' },
+      {
+        $set: {
+          referralDiscountPercent: 10,
+          referralDiscount: 150,
+          baseApplicationFee: 1499,
+          isReferralEnabled: true,
+          requireVerifiedReferrer: false,
+        },
+      },
+      { upsert: true, new: true }
+    );
+    console.log('✅ Setting updated in MongoDB:', {
+      referralDiscountPercent: updatedSetting.referralDiscountPercent,
+      referralDiscount: updatedSetting.referralDiscount,
+      baseApplicationFee: updatedSetting.baseApplicationFee,
+      isReferralEnabled: updatedSetting.isReferralEnabled,
+      requireVerifiedReferrer: updatedSetting.requireVerifiedReferrer,
+    });
+
     await mongoose.disconnect();
+    console.log('✅ Done!');
     process.exit(0);
   } catch (error) {
     console.error('❌ Error updating admin credentials:', error);

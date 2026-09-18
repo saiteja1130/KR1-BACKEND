@@ -42,7 +42,7 @@ async function runTests() {
   // Test 2: StandardCheckoutPayRequest Builder (UPI & QR)
   try {
     const merchantOrderId = `KR1_TEST_${Date.now()}`;
-    const amountInINR = 1500;
+    const amountInINR = 1499;
     const amountInPaise = amountInINR * 100; // 100,000 paise
     const redirectUrl = 'http://localhost:3000/payment-status/APP-TEST?merchantOrderId=' + merchantOrderId;
     const phone = '9666193543';
@@ -61,7 +61,7 @@ async function runTests() {
 
     if (
       request.merchantOrderId === merchantOrderId &&
-      request.amount === 150000 &&
+      request.amount === 149900 &&
       request.redirectUrl === redirectUrl &&
       request.prefillUserLoginDetails?.phoneNumber === phone
     ) {
@@ -82,10 +82,10 @@ async function runTests() {
     const expectedAuth = CommonUtils.calculateSha256({ username, password });
 
     const rawPayload = JSON.stringify({
-      orderId: 'OMO2408301500000001',
+      orderId: 'OMO2408301499000001',
       merchantOrderId: 'KR1_APP_001_1726543200',
       state: 'COMPLETED',
-      amount: 150000,
+      amount: 149900,
       paymentMode: 'UPI_INTENT',
       transactionId: 'T240830151234567890',
     });
@@ -146,8 +146,8 @@ async function runTests() {
     const dummyPayment = new Payment({
       merchantOrderId: 'KR1_TEST_001',
       applicationId: 'APP-2026-0001',
-      amount: 1500,
-      amountInPaise: 150000,
+      amount: 1499,
+      amountInPaise: 149900,
       currency: 'INR',
       status: 'CREATED',
       paymentMode: 'UPI_QR',

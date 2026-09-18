@@ -9,16 +9,23 @@ const settingSchema = new mongoose.Schema(
       trim: true,
       default: 'referral_settings',
     },
+    referralDiscountPercent: {
+      type: Number,
+      required: true,
+      default: 10,
+      min: 0,
+      max: 100,
+    },
     referralDiscount: {
       type: Number,
       required: true,
-      default: 200,
+      default: 150,
       min: 0,
     },
     baseApplicationFee: {
       type: Number,
       required: true,
-      default: 1500,
+      default: 1499,
       min: 0,
     },
     isReferralEnabled: {

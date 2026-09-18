@@ -112,7 +112,7 @@ const sendApplicationSubmittedEmail = async (application) => {
       <p><span class="info-label">Application ID:</span> <span class="info-value"><strong>${application.applicationId}</strong></span></p>
       <p><span class="info-label">Applicant Name:</span> <span class="info-value">${application.personalDetails.fullName}</span></p>
       <p><span class="info-label">Applicant Type:</span> <span class="info-value">${application.applicantType.toUpperCase()}</span></p>
-      <p><span class="info-label">Registration Fee:</span> <span class="info-value">₹${application.payment.amount || 1500}</span></p>
+      <p><span class="info-label">Registration Fee:</span> <span class="info-value">₹${application.payment.amount || 1499}</span></p>
       <p><span class="info-label">Payment Status:</span> <span class="badge">Payment Pending</span></p>
     </div>
 
@@ -143,7 +143,7 @@ const sendPaymentReceivedCredentialsEmail = async (application, temporaryPasswor
     <div class="greeting">Welcome to KR Material & Manpower Suppliers!</div>
     <p>Dear <strong>${application.personalDetails.fullName}</strong>,</p>
     
-    <p>We are pleased to inform you that your payment of <strong>₹${application.payment.amount || 1500}</strong> has been <strong>verified and received successfully</strong>.</p>
+    <p>We are pleased to inform you that your payment of <strong>₹${application.payment.amount || 1499}</strong> has been <strong>verified and received successfully</strong>.</p>
 
     <div style="background-color: #ECFDF5; border: 1px solid #A7F3D0; border-left: 4px solid #10B981; border-radius: 6px; padding: 18px 20px; margin: 20px 0;">
       <h3 style="color: #065F46; margin: 0 0 12px 0; font-size: 16px;">✓ Payment Confirmed & Account Activated</h3>

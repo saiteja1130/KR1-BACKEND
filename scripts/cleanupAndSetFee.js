@@ -20,10 +20,10 @@ const run = async () => {
     await mongoose.connect(mongoUri);
     console.log('✅ Connected to MongoDB successfully.');
 
-    // 1. Update Settings to set baseApplicationFee = 1500
+    // 1. Update Settings to set baseApplicationFee = 1499
     const settingResult = await Setting.findOneAndUpdate(
       { key: 'referral_settings' },
-      { $set: { baseApplicationFee: 1500 } },
+      { $set: { baseApplicationFee: 1499 } },
       { upsert: true, new: true }
     );
     console.log('✅ Updated referral settings: baseApplicationFee set to ₹' + settingResult.baseApplicationFee);
@@ -47,7 +47,7 @@ const run = async () => {
     const remainingAdmins = await User.find({ role: 'ADMIN' }).select('name email role');
     console.log(`🛡️ Preserved ${remainingAdmins.length} Admin account(s):`, remainingAdmins.map(a => a.email));
 
-    console.log('\n🎉 Database cleanup complete and application fee updated to ₹1500!');
+    console.log('\n🎉 Database cleanup complete and application fee updated to ₹1499!');
     process.exit(0);
   } catch (error) {
     console.error('❌ Error executing cleanup:', error);
