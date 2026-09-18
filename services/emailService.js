@@ -53,14 +53,14 @@ const getBaseEmailTemplate = (title, contentHtml) => {
   <body>
     <div class="container">
       <div class="header">
-        <h1>KR Material & Manpower Suppliers</h1>
+        <h1>KR1 Material & Manpower Suppliers</h1>
         <p>Trusted Industrial Partner & Manpower Solutions</p>
       </div>
       <div class="content">
         ${contentHtml}
       </div>
       <div class="footer">
-        <p>© ${new Date().getFullYear()} KR Material & Manpower Suppliers. All rights reserved.</p>
+        <p>© ${new Date().getFullYear()} KR1 Material & Manpower Suppliers. All rights reserved.</p>
         <p>Kakinada, Andhra Pradesh, India | Email: <a href="mailto:info@kr1.in">info@kr1.in</a> | Phone: +91 9666193543</p>
       </div>
     </div>
@@ -71,7 +71,7 @@ const getBaseEmailTemplate = (title, contentHtml) => {
 
 // Generic mail sender
 const sendMail = async ({ to, subject, html }) => {
-  const from = process.env.EMAIL_FROM || '"KR Material & Manpower" <info@kr1.in>';
+  const from = process.env.EMAIL_FROM || '"KR1 Material & Manpower Suppliers" <info@kr1.in>';
   const transporter = createTransporter();
 
   if (!transporter) {
@@ -106,7 +106,7 @@ const sendApplicationSubmittedEmail = async (application) => {
 
   const content = `
     <div class="greeting">Dear ${application.personalDetails.fullName},</div>
-    <p>Thank you for submitting your application to <strong>KR Material & Manpower Suppliers</strong>.</p>
+    <p>Thank you for submitting your application to <strong>KR1 Material & Manpower Suppliers</strong>.</p>
     
     <div class="info-box">
       <p><span class="info-label">Application ID:</span> <span class="info-value"><strong>${application.applicationId}</strong></span></p>
@@ -127,7 +127,7 @@ const sendApplicationSubmittedEmail = async (application) => {
 
   return await sendMail({
     to: application.personalDetails.email,
-    subject: `Application Submitted - [${application.applicationId}] | KR Material & Manpower`,
+    subject: `Application Submitted - [${application.applicationId}] | KR1 Material & Manpower Suppliers`,
     html: getBaseEmailTemplate('Application Submitted', content),
   });
 };
@@ -140,7 +140,7 @@ const sendPaymentReceivedCredentialsEmail = async (application, temporaryPasswor
   const loginUrl = `${frontendUrl}/login`;
 
   const content = `
-    <div class="greeting">Welcome to KR Material & Manpower Suppliers!</div>
+    <div class="greeting">Welcome to KR1 Material & Manpower Suppliers!</div>
     <p>Dear <strong>${application.personalDetails.fullName}</strong>,</p>
     
     <p>We are pleased to inform you that your payment of <strong>₹${application.payment.amount || 1499}</strong> has been <strong>verified and received successfully</strong>.</p>
@@ -169,7 +169,7 @@ const sendPaymentReceivedCredentialsEmail = async (application, temporaryPasswor
 
   return await sendMail({
     to: application.personalDetails.email,
-    subject: `Payment Confirmed & Login Credentials - [${application.applicationId}] | KR Material & Manpower`,
+    subject: `Payment Confirmed & Login Credentials - [${application.applicationId}] | KR1 Material & Manpower Suppliers`,
     html: getBaseEmailTemplate('Payment Confirmed & Account Created', content),
   });
 };
@@ -183,7 +183,7 @@ const sendApplicationUnderReviewEmail = async (application) => {
 
   const content = `
     <div class="greeting">Dear ${application.personalDetails.fullName},</div>
-    <p>Your application <strong>[${application.applicationId}]</strong> is currently <strong>Under Review</strong> by the recruitment and screening team at KR Material & Manpower Suppliers.</p>
+    <p>Your application <strong>[${application.applicationId}]</strong> is currently <strong>Under Review</strong> by the recruitment and screening team at KR1 Material & Manpower Suppliers.</p>
     
     <div class="info-box">
       <p><span class="info-label">Application ID:</span> <span class="info-value"><strong>${application.applicationId}</strong></span></p>
@@ -200,7 +200,7 @@ const sendApplicationUnderReviewEmail = async (application) => {
 
   return await sendMail({
     to: application.personalDetails.email,
-    subject: `Application Under Review - [${application.applicationId}] | KR Material & Manpower`,
+    subject: `Application Under Review - [${application.applicationId}] | KR1 Material & Manpower Suppliers`,
     html: getBaseEmailTemplate('Application Under Review', content),
   });
 };
@@ -214,7 +214,7 @@ const sendApplicationConfirmedEmail = async (application, remarks = '') => {
 
   const content = `
     <div class="greeting">Congratulations, ${application.personalDetails.fullName}! 🎉</div>
-    <p>We are delighted to inform you that your application for <strong>KR Material & Manpower Suppliers</strong> has been <strong>CONFIRMED</strong>!</p>
+    <p>We are delighted to inform you that your application for <strong>KR1 Material & Manpower Suppliers</strong> has been <strong>CONFIRMED</strong>!</p>
     
     <div style="background-color: #ECFDF5; border: 1px solid #A7F3D0; border-left: 4px solid #10B981; border-radius: 6px; padding: 18px 20px; margin: 20px 0;">
       <p style="margin: 6px 0;"><span class="info-label">Application ID:</span> <span class="info-value"><strong>${application.applicationId}</strong></span></p>
@@ -231,7 +231,7 @@ const sendApplicationConfirmedEmail = async (application, remarks = '') => {
 
   return await sendMail({
     to: application.personalDetails.email,
-    subject: `Application Confirmed! - [${application.applicationId}] | KR Material & Manpower`,
+    subject: `Application Confirmed! - [${application.applicationId}] | KR1 Material & Manpower Suppliers`,
     html: getBaseEmailTemplate('Application Confirmed', content),
   });
 };
@@ -245,7 +245,7 @@ const sendApplicationRejectedEmail = async (application, remarks = '') => {
 
   const content = `
     <div class="greeting">Dear ${application.personalDetails.fullName},</div>
-    <p>Thank you for your interest in career opportunities with <strong>KR Material & Manpower Suppliers</strong> and for taking the time to apply.</p>
+    <p>Thank you for your interest in career opportunities with <strong>KR1 Material & Manpower Suppliers</strong> and for taking the time to apply.</p>
     
     <div style="background-color: #FEF2F2; border: 1px solid #FECACA; border-left: 4px solid #EF4444; border-radius: 6px; padding: 18px 20px; margin: 20px 0;">
       <p style="margin: 6px 0;"><span class="info-label">Application ID:</span> <span class="info-value"><strong>${application.applicationId}</strong></span></p>
@@ -264,7 +264,7 @@ const sendApplicationRejectedEmail = async (application, remarks = '') => {
 
   return await sendMail({
     to: application.personalDetails.email,
-    subject: `Application Status Update - [${application.applicationId}] | KR Material & Manpower`,
+    subject: `Application Status Update - [${application.applicationId}] | KR1 Material & Manpower Suppliers`,
     html: getBaseEmailTemplate('Application Status Update', content),
   });
 };
