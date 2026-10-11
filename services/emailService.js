@@ -113,16 +113,17 @@ const sendApplicationSubmittedEmail = async (application) => {
       <p><span class="info-label">Applicant Name:</span> <span class="info-value">${application.personalDetails.fullName}</span></p>
       <p><span class="info-label">Applicant Type:</span> <span class="info-value">${application.applicantType.toUpperCase()}</span></p>
       <p><span class="info-label">Registration Fee:</span> <span class="info-value">₹${application.payment.amount || 1499}</span></p>
-      <p><span class="info-label">Payment Status:</span> <span class="badge">Payment Pending</span></p>
+      <p><span class="info-label">Transaction ID / UTR:</span> <span class="info-value"><strong>${application.payment.transactionId || 'Submitted'}</strong></span></p>
+      <p><span class="info-label">Status:</span> <span class="badge" style="background-color: #FEF3C7; color: #92400E;">Awaiting Admin Verification</span></p>
     </div>
 
-    <p>To finalize your application verification, please complete the registration fee payment via PhonePe QR code and submit your Transaction ID.</p>
+    <p>We have successfully received your application along with your payment Transaction ID. Our administrative desk is currently verifying your payment details.</p>
     
     <div style="text-align: center;">
-      <a href="${paymentUrl}" class="btn">Proceed to Payment Screen</a>
+      <a href="${paymentUrl}" class="btn">View Application & Payment Status</a>
     </div>
 
-    <p style="font-size: 13px; color: #64748B;">Once your transaction ID is verified by our administrative team, you will automatically receive your login credentials to access your Candidate Dashboard.</p>
+    <p style="font-size: 13px; color: #64748B;">Once your transaction ID is verified and approved by our team, your candidate login credentials will be generated and emailed to you automatically.</p>
   `;
 
   return await sendMail({

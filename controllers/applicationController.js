@@ -95,6 +95,42 @@ const submitApplication = async (req, res, next) => {
       });
     }
 
+    // Validate Payment Transaction ID / UTR
+    const transactionId = (req.body.transactionId || '').trim().toUpperCase();
+    if (!transactionId) {
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(400).json({
+        success: false,
+        message: 'Payment Transaction ID / UTR number is required. Please complete UPI payment and enter your 12-digit UTR.',
+      });
+    }
+
+    if (transactionId.length < 8) {
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(400).json({
+        success: false,
+        message: 'Transaction ID / UTR appears too short. Please enter a valid Transaction ID.',
+      });
+    }
+
+    // Check for duplicate UTR number across applications to prevent reuse
+    const duplicateTxn = await Application.findOne({
+      'payment.transactionId': transactionId,
+    });
+    if (duplicateTxn) {
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(400).json({
+        success: false,
+        message: `This Transaction ID / UTR (${transactionId}) has already been submitted for application ${duplicateTxn.applicationId}. Please verify your payment receipt.`,
+      });
+    }
+
     // Check for duplicate recent active application with same email
     const existingApp = await Application.findOne({
       'personalDetails.email': personalDetails.email.toLowerCase().trim(),
@@ -218,7 +254,8 @@ const submitApplication = async (req, res, next) => {
       payment: {
         amount: payableAmount,
         status: 'PENDING',
-        transactionId: null,
+        transactionId: transactionId,
+        submittedAt: new Date(),
       },
       referral: referralData,
       status: 'PAYMENT_PENDING',
@@ -226,11 +263,11 @@ const submitApplication = async (req, res, next) => {
         {
           previousStatus: null,
           newStatus: 'PAYMENT_PENDING',
-          changedByName: 'Applicant (System)',
+          changedByName: 'Applicant (Self)',
           changedAt: new Date(),
           remarks: referralData.isReferred
-            ? `Application submitted with member referral discount (-₹${referralData.discountAmount}). Payable fee: ₹${payableAmount}.`
-            : 'Application submitted successfully. Registration fee payment pending.',
+            ? `Application submitted with referral discount (-₹${referralData.discountAmount}). Payment UTR: ${transactionId}. Payable fee: ₹${payableAmount}. Awaiting admin verification.`
+            : `Application submitted with Payment UTR: ${transactionId}. Registration fee: ₹${payableAmount}. Awaiting admin verification.`,
         },
       ],
     });
@@ -244,9 +281,10 @@ const submitApplication = async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      message: 'Application registered successfully. Please proceed to complete the payment.',
+      message: 'Application and payment details submitted successfully. Awaiting administrative verification.',
       applicationId: application.applicationId,
       amount: application.payment.amount,
+      transactionId: application.payment.transactionId,
       discountAmount: referralData.discountAmount,
       referral: application.referral,
     });
