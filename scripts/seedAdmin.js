@@ -48,7 +48,7 @@ const seedAdmin = async () => {
     }
 
     console.log('\n=======================================');
-    console.log('🔐 KR MATERIAL & MANPOWER ADMIN CREDENTIALS:');
+    console.log('🔐 KR1 MATERIAL & MANPOWER ADMIN CREDENTIALS:');
     console.log(`   Email:    ${adminEmail}`);
     console.log(`   Password: ${adminPassword}`);
     console.log(`   Role:     ADMIN`);

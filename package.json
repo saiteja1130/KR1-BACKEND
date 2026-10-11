@@ -1,7 +1,7 @@
 {
   "name": "kr1-backend",
   "version": "1.0.0",
-  "description": "KR Material and Manpower User Application, Payment & Admin Backend",
+  "description": "KR1 Material and Manpower User Application, Payment & Admin Backend",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -16,7 +16,7 @@
     "payment",
     "admin"
   ],
-  "author": "KR Material and Manpower",
+  "author": "KR1 Material and Manpower",
   "license": "ISC",
   "type": "module",
   "dependencies": {

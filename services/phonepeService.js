@@ -77,7 +77,7 @@ class PhonePeService {
       .merchantOrderId(merchantOrderId)
       .amount(amountInPaise)
       .redirectUrl(redirectUrl)
-      .message('KR Material Registration Fee - UPI & QR');
+      .message('KR1 Material Registration Fee - UPI & QR');
 
     // Prefill phone number for expedited UPI lookup if available
     if (candidatePhone) {

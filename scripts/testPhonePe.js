@@ -56,7 +56,7 @@ async function runTests() {
       .amount(amountInPaise)
       .redirectUrl(redirectUrl)
       .prefillUserLoginDetails(prefill)
-      .message('KR Material Registration Fee - UPI & QR')
+      .message('KR1 Material Registration Fee - UPI & QR')
       .build();
 
     if (

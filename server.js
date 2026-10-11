@@ -67,7 +67,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.get('/', (req, res) => {
   res.status(200).json({
     success: true,
-    message: 'KR Material & Manpower Suppliers API is active and running.',
+    message: 'KR1 Material & Manpower Suppliers API is active and running.',
     version: '1.0.0',
     timestamp: new Date().toISOString(),
   });

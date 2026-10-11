@@ -53,14 +53,14 @@ const getBaseEmailTemplate = (title, contentHtml) => {
   <body>
     <div class="container">
       <div class="header">
-        <h1>KR1 Material & Manpower Suppliers</h1>
-        <p>Trusted Industrial Partner & Manpower Solutions</p>
+        <h1>KR1 Placement Consultancy</h1>
+        <p>A Division of KR1 Material & Manpower Suppliers</p>
       </div>
       <div class="content">
         ${contentHtml}
       </div>
       <div class="footer">
-        <p>© ${new Date().getFullYear()} KR1 Material & Manpower Suppliers. All rights reserved.</p>
+        <p>© ${new Date().getFullYear()} KR1 Placement Consultancy | KR1 Material & Manpower Suppliers. All rights reserved.</p>
         <p>Kakinada, Andhra Pradesh, India | Email: <a href="mailto:info@kr1.in">info@kr1.in</a> | Phone: +91 9666193543</p>
       </div>
     </div>
@@ -106,7 +106,7 @@ const sendApplicationSubmittedEmail = async (application) => {
 
   const content = `
     <div class="greeting">Dear ${application.personalDetails.fullName},</div>
-    <p>Thank you for submitting your application to <strong>KR1 Material & Manpower Suppliers</strong>.</p>
+    <p>Thank you for applying with <strong>KR1 Placement Consultancy</strong>.</p>
     
     <div class="info-box">
       <p><span class="info-label">Application ID:</span> <span class="info-value"><strong>${application.applicationId}</strong></span></p>
@@ -115,6 +115,14 @@ const sendApplicationSubmittedEmail = async (application) => {
       <p><span class="info-label">Registration Fee:</span> <span class="info-value">₹${application.payment.amount || 1499}</span></p>
       <p><span class="info-label">Transaction ID / UTR:</span> <span class="info-value"><strong>${application.payment.transactionId || 'Submitted'}</strong></span></p>
       <p><span class="info-label">Status:</span> <span class="badge" style="background-color: #FEF3C7; color: #92400E;">Awaiting Admin Verification</span></p>
+    </div>
+
+    <!-- Important Notice Regarding Service Charge -->
+    <div style="background-color: #FFFBEB; border: 1px solid #FDE68A; border-left: 4px solid #F59E0B; border-radius: 6px; padding: 18px 20px; margin: 24px 0;">
+      <h3 style="color: #92400E; margin: 0 0 8px 0; font-size: 15px; font-weight: 700;">📌 Important Placement Terms & Service Charge:</h3>
+      <p style="margin: 0; font-size: 14px; color: #78350F; line-height: 1.6;">
+        Please note: <strong>Don't forget to pay the service charge of 1 month of salary after securing your job</strong> through KR1 Placement Consultancy.
+      </p>
     </div>
 
     <p>We have successfully received your application along with your payment Transaction ID. Our administrative desk is currently verifying your payment details.</p>
@@ -128,7 +136,7 @@ const sendApplicationSubmittedEmail = async (application) => {
 
   return await sendMail({
     to: application.personalDetails.email,
-    subject: `Application Submitted - [${application.applicationId}] | KR1 Material & Manpower Suppliers`,
+    subject: `Application Submitted - [${application.applicationId}] | KR1 Placement Consultancy`,
     html: getBaseEmailTemplate('Application Submitted', content),
   });
 };
