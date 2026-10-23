@@ -28,18 +28,23 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:3000',
   'http://127.0.0.1:5173',
-  process.env.FRONTEND_URL,
+  'https://kr1.in',               // production frontend (hardcoded fallback)
+  'https://www.kr1.in',           // www variant
+  process.env.FRONTEND_URL,       // override via env if needed
 ].filter(Boolean);
+
+// Handle OPTIONS preflight for all routes before any other middleware
+app.options('*', cors());
 
 app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps, curl, postman)
       if (!origin) return callback(null, true);
-      if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+      if (allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
         return callback(null, true);
       }
-      return callback(new Error('CORS policy: Not allowed by origin'));
+      return callback(new Error(`CORS policy: Origin ${origin} not allowed`));
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
